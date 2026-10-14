@@ -3,3 +3,6 @@ data/*.db
 __pycache__/
 .pytest_cache/
 .venv/
+# Zugangsdaten für die E-Mail – niemals ins Git!
+email_config.toml
+data/*.log

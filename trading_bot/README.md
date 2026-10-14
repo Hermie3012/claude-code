@@ -50,6 +50,8 @@ pytest
 ```
 trading_bot/
 ├── app.py              # Einstieg: legt die Seiten und ihre Namen fest
+├── notify.py           # tägliche Signal-E-Mail (separat starten)
+├── email_config.example.toml  # Vorlage für die E-Mail-Zugangsdaten
 ├── views/              # die Seiten (Start, Daten, Backtest, später Depot, Signale)
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
 │   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
@@ -59,6 +61,7 @@ trading_bot/
 │   ├── backtest.py     # Backtest-Simulation und Kennzahlen
 │   ├── portfolio.py    # Paper-Depot (virtuelle Orders)
 │   ├── signals.py      # Signale und Depot-Anpassung
+│   ├── notify.py       # E-Mail-Text bauen und senden
 │   └── watchlist.py    # Watchlist und Scan-Liste
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
@@ -135,6 +138,82 @@ sich frühere Entscheidungen dadurch nicht ändern.
 - Die Seite zeigt, wann zuletzt angepasst wurde und ob laut Strategie
   (alle N Handelstage) wieder eine Anpassung fällig ist.
 
+## Tägliche E-Mail
+
+`notify.py` berechnet die Signale (mit den Einstellungen, die du zuletzt auf
+der Seite **Signale** gewählt hast) und schickt dir eine E-Mail mit der
+KAUFEN/VERKAUFEN-Liste, dem Depotwert und ob eine Anpassung fällig ist.
+Es werden **keine Orders ausgeführt** – das machst du selbst in der App.
+
+### 1. Gmail-App-Passwort erstellen
+
+Gmail lässt Programme nicht mit deinem normalen Passwort senden. Du brauchst
+ein **App-Passwort**:
+
+1. Unter <https://myaccount.google.com/security> die
+   **Bestätigung in zwei Schritten** einschalten (falls noch nicht aktiv).
+2. <https://myaccount.google.com/apppasswords> öffnen, einen Namen eingeben
+   (z. B. „Trading-Bot“) und auf **Erstellen** klicken.
+3. Das angezeigte 16-stellige Passwort kopieren (Leerzeichen sind egal).
+
+### 2. Zugangsdaten eintragen
+
+Im Ordner `trading_bot/` die Datei `email_config.example.toml` **kopieren**,
+die Kopie `email_config.toml` nennen und darin die Platzhalter `DEIN_…`
+ersetzen. Diese Datei wird **nicht** ins Git übernommen – gib sie niemandem.
+
+### 3. Testen
+
+Terminal öffnen, in den Ordner `trading_bot/` wechseln, virtuelle Umgebung
+aktivieren (siehe „Installation“) und dann:
+
+```bash
+python notify.py --dry-run   # zeigt die E-Mail nur an
+python notify.py             # sendet sie wirklich
+```
+
+Bei Problemen steht eine verständliche Fehlermeldung im Terminal und in
+`data/notify.log`.
+
+### 4. Täglich automatisch starten
+
+Welches Betriebssystem hast du?
+- **Windows**: Startmenü-Knopf mit dem Fenster-Logo unten links.
+- **macOS**: Apfel-Logo oben links.
+- **Linux**: wenn du es nicht weißt, hast du es wahrscheinlich nicht 🙂
+- Oder im Terminal: `python -c "import platform; print(platform.system())"`
+  (gibt `Windows`, `Darwin` = macOS oder `Linux` aus).
+
+Vorschlag: **Montag bis Freitag um 22:45 Uhr** – dann sind auch die
+US-Börsen (Schluss 22:00 Uhr deutscher Zeit) geschlossen. Der Computer muss
+zu dieser Zeit eingeschaltet sein (nicht im Ruhezustand).
+
+In den Befehlen unten `PFAD` durch den echten Pfad zum Ordner `trading_bot`
+ersetzen (z. B. `C:\Users\Max\claude-code\trading_bot` oder
+`/Users/max/claude-code/trading_bot`).
+
+**Windows** – PowerShell öffnen und eingeben (eine Zeile):
+
+```powershell
+schtasks /Create /SC WEEKLY /D MO,TUE,WED,THU,FRI /ST 22:45 /TN "TradingBot-Signale" /TR "\"PFAD\.venv\Scripts\python.exe\" \"PFAD\notify.py\""
+```
+
+Prüfen/ändern/löschen in der **Aufgabenplanung** (Startmenü → „Aufgabenplanung“
+suchen) unter „TradingBot-Signale“. Zum sofortigen Testen:
+`schtasks /Run /TN "TradingBot-Signale"`.
+
+**macOS und Linux** – Terminal öffnen, `crontab -e` eingeben und diese Zeile
+am Ende einfügen (speichern und schließen):
+
+```
+45 22 * * 1-5 PFAD/.venv/bin/python PFAD/notify.py
+```
+
+`crontab -l` zeigt die eingetragenen Aufgaben. Auf macOS fragt das System beim
+ersten Lauf evtl. nach Berechtigungen; falls nichts passiert, unter
+*Systemeinstellungen → Datenschutz & Sicherheit → Festplattenvollzugriff*
+das Programm `cron` (unter `/usr/sbin/cron`) hinzufügen.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
@@ -143,4 +222,4 @@ sich frühere Entscheidungen dadurch nicht ändern.
 4. ✅ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
 5. ✅ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
 6. ✅ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
-7. ⬜ Optional: tägliche E-Mail-Benachrichtigung
+7. ✅ Optional: tägliche E-Mail-Benachrichtigung

@@ -1,16 +1,16 @@
 """Seite 'Signale': aktuelle Kaufen/Verkaufen-Liste und Depot-Anpassung."""
 
-from datetime import date, timedelta
+from datetime import date
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from tradingbot import config, data
+from tradingbot import config
 from tradingbot.portfolio import eur, get_settings, get_state
-from tradingbot.signals import BUY, HOLD, NONE, SELL, build_signals, execute_plan, last_rebalance, plan_rebalance
+from tradingbot.signals import (BUY, HOLD, NONE, SELL, compute_snapshot, days_since_rebalance, execute_plan,
+                                last_rebalance, load_settings, plan_rebalance, save_settings)
 from tradingbot.strategy import StrategyParams
-from tradingbot.watchlist import get_watchlist
 
 LABEL = {BUY: "🟢 KAUFEN", SELL: "🔴 VERKAUFEN", HOLD: "🔵 HALTEN", NONE: "–"}
 
@@ -25,54 +25,55 @@ for level, msg in state.flash:
 state.flash = []
 
 # ---------------------------------------------------------------- Einstellungen
+# Startwerte aus der Datenbank (gespeichert vom letzten Besuch), danach merkt
+# sich Streamlit die Werte über die `key`s.
+saved, saved_scan = load_settings()
+for key, value in [("sig_lookback", saved.lookback), ("sig_top_n", saved.top_n),
+                   ("sig_rebalance", saved.rebalance_days), ("sig_positive", saved.only_positive),
+                   ("sig_scan", saved_scan)]:
+    state.setdefault(key, value)
+
 with st.sidebar:
     st.header("Strategie")
-    lookback = st.slider("Lookback (Handelstage)", 5, 250, config.DEFAULT_LOOKBACK)
-    top_n = st.slider("Top-N (Anzahl Aktien)", 1, 10, config.DEFAULT_TOP_N)
-    rebalance = st.slider("Umschichten alle … Handelstage", 1, 60, config.DEFAULT_REBALANCE_DAYS)
-    only_positive = st.checkbox("Nur positives Momentum kaufen (sonst Cash)")
+    lookback = st.slider("Lookback (Handelstage)", 5, 250, key="sig_lookback")
+    top_n = st.slider("Top-N (Anzahl Aktien)", 1, 10, key="sig_top_n")
+    rebalance = st.slider("Umschichten alle … Handelstage", 1, 60, key="sig_rebalance")
+    only_positive = st.checkbox("Nur positives Momentum kaufen (sonst Cash)", key="sig_positive")
     st.header("Scan")
-    use_scan = st.checkbox("Scan-Liste einbeziehen", value=True,
+    use_scan = st.checkbox("Scan-Liste einbeziehen", key="sig_scan",
                            help="Zusätzlich zur Watchlist auch die Aktien der Scan-Liste bewerten "
                                 "(bearbeitbar auf der Seite Daten).")
+    st.caption("Diese Einstellungen werden gespeichert und auch für die tägliche E-Mail verwendet.")
 
 params = StrategyParams(lookback=lookback, top_n=top_n, rebalance_days=rebalance, only_positive=only_positive)
+if (params, use_scan) != (saved, saved_scan):
+    save_settings(params, use_scan)
 
 # ---------------------------------------------------------------- Daten
-universe = get_watchlist()
-if use_scan:
-    universe = list(dict.fromkeys(universe + get_watchlist(name="scanlist")))
-if not universe:
-    st.info("Watchlist und Scan-Liste sind leer. Füge auf der Seite **Daten** Aktien hinzu.")
+with st.spinner("Lade Kurse …"):
+    snap = compute_snapshot(params, use_scan)
+if snap.loaded is not None:
+    for w in snap.loaded.warnings:
+        st.warning(w)
+    if snap.loaded.errors:
+        with st.expander(f"⚠️ {len(snap.loaded.errors)} Aktien ohne Daten (werden nicht bewertet)"):
+            st.write("\n".join(f"- **{t}**: {msg}" for t, msg in snap.loaded.errors.items()))
+if snap.error:
+    st.error(snap.error)
     st.stop()
 
-# Lookback zählt Handelstage; in Kalendertagen etwa 1,5-mal so viel plus Puffer
-start = date.today() - timedelta(days=int(lookback * 1.5) + 30)
-with st.spinner(f"Lade Kurse für {len(universe)} Aktien …"):
-    loaded = data.load_prices(universe, start.isoformat())
-for w in loaded.warnings:
-    st.warning(w)
-if loaded.errors:
-    with st.expander(f"⚠️ {len(loaded.errors)} Aktien ohne Daten (werden nicht bewertet)"):
-        st.write("\n".join(f"- **{t}**: {msg}" for t, msg in loaded.errors.items()))
-prices = loaded.prices
-if len(prices) < lookback + 1:
-    st.error(f"Zu wenig Kursdaten ({len(prices)} Tage) für einen Lookback von {lookback} Tagen.")
-    st.stop()
-
-price_date = prices.index[-1].date()
+universe, prices, signals, price_date = snap.universe, snap.loaded.prices, snap.signals, snap.price_date
 depot = get_state()
 _, costs = get_settings()
-signals = build_signals(prices, params, held=set(depot.positions))
 
 # ---------------------------------------------------------------- Rhythmus
-last = last_rebalance()
+days_since = days_since_rebalance(price_date)
 st.write(f"Signale nach Schlusskurs vom **{price_date:%d.%m.%Y}** · {prices.shape[1]} Aktien bewertet")
-if last is None:
+if days_since is None:
     st.info(f"Noch keine Anpassung über diese Seite. Die Strategie sieht vor, alle {rebalance} Handelstage umzuschichten.")
 else:
-    days_since = int(np.busday_count(date.fromisoformat(last), price_date))
-    text = f"Letzte Anpassung: Kurse vom **{date.fromisoformat(last):%d.%m.%Y}** – vor {days_since} Handelstagen."
+    last = date.fromisoformat(last_rebalance())
+    text = f"Letzte Anpassung: Kurse vom **{last:%d.%m.%Y}** – vor {days_since} Handelstagen."
     if days_since >= rebalance:
         st.warning(f"{text} Laut Strategie (alle {rebalance} Handelstage) wäre eine Anpassung fällig.")
     else:

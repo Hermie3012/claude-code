@@ -9,15 +9,20 @@ wieder dem Ziel entspricht (je 1/Top-N des Depotwerts, nur ganze Aktien).
 Ausgeführt wird erst mit execute_plan() – die Seite zeigt vorher eine Vorschau.
 """
 
+import json
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import date, timedelta
 
+import numpy as np
 import pandas as pd
 
+from tradingbot import data
 from tradingbot.backtest import Costs
 from tradingbot.db import connect
-from tradingbot.portfolio import DepotState, OrderError, max_affordable, place_order
+from tradingbot.portfolio import DepotState, OrderError, get_state, max_affordable, place_order
 from tradingbot.strategy import StrategyParams, ranking
+from tradingbot.watchlist import get_watchlist
 
 BUY, SELL, HOLD, NONE = "KAUFEN", "VERKAUFEN", "HALTEN", "–"
 SIGNAL_ORDER = {BUY: 0, SELL: 1, HOLD: 2, NONE: 3}
@@ -148,3 +153,58 @@ def last_rebalance(db_path=None) -> str | None:
     with connect(db_path) as conn:
         row = conn.execute("SELECT value FROM meta WHERE key = 'last_rebalance'").fetchone()
     return row[0] if row else None
+
+
+# ---------------------------------------------------------------- Einstellungen & Berechnung
+# Die Signal-Seite speichert ihre Einstellungen, damit die tägliche E-Mail
+# (notify.py) mit genau denselben Werten rechnet.
+
+def save_settings(params: StrategyParams, use_scan: bool, db_path=None) -> None:
+    value = json.dumps({**asdict(params), "use_scan": use_scan})
+    with connect(db_path) as conn:
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('signal_settings', ?)", (value,))
+
+
+def load_settings(db_path=None) -> tuple[StrategyParams, bool]:
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key = 'signal_settings'").fetchone()
+    if not row:
+        return StrategyParams(), True
+    values = json.loads(row[0])
+    use_scan = values.pop("use_scan", True)
+    return StrategyParams(**values), use_scan
+
+
+@dataclass
+class Snapshot:
+    """Alles, was Signal-Seite und E-Mail für den aktuellen Stand brauchen."""
+    universe: list[str]
+    loaded: "data.LoadResult | None"
+    signals: pd.DataFrame | None
+    price_date: date | None
+    error: str | None = None
+
+
+def compute_snapshot(params: StrategyParams, use_scan: bool, db_path=None) -> Snapshot:
+    universe = get_watchlist(db_path)
+    if use_scan:
+        universe = list(dict.fromkeys(universe + get_watchlist(db_path, name="scanlist")))
+    if not universe:
+        return Snapshot(universe, None, None, None,
+                        "Watchlist und Scan-Liste sind leer. Füge auf der Seite Daten Aktien hinzu.")
+
+    # Lookback zählt Handelstage; in Kalendertagen etwa 1,5-mal so viel plus Puffer
+    start = date.today() - timedelta(days=int(params.lookback * 1.5) + 30)
+    loaded = data.load_prices(universe, start.isoformat(), db_path=db_path)
+    prices = loaded.prices
+    if len(prices) < params.lookback + 1:
+        return Snapshot(universe, loaded, None, None,
+                        f"Zu wenig Kursdaten ({len(prices)} Tage) für einen Lookback von {params.lookback} Tagen.")
+    held = set(get_state(db_path).positions)
+    return Snapshot(universe, loaded, build_signals(prices, params, held), prices.index[-1].date())
+
+
+def days_since_rebalance(price_date: date, db_path=None) -> int | None:
+    """Handelstage seit der letzten Anpassung (None = noch nie angepasst)."""
+    last = last_rebalance(db_path)
+    return None if last is None else int(np.busday_count(date.fromisoformat(last), price_date))

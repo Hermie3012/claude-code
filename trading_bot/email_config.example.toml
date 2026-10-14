@@ -1,0 +1,12 @@
+# Vorlage für die tägliche E-Mail.
+# 1. Diese Datei kopieren und die Kopie "email_config.toml" nennen.
+# 2. In der Kopie die Platzhalter ersetzen.
+# Die Kopie enthält dein App-Passwort und wird NICHT ins Git übernommen (.gitignore).
+
+sender = "DEIN_NAME@gmail.com"          # Gmail-Adresse, von der gesendet wird
+app_password = "DEIN_APP_PASSWORT"      # 16-stelliges App-Passwort von Google (NICHT dein normales Passwort)
+recipient = "DEIN_NAME@gmail.com"       # wer die E-Mail bekommt (darf dieselbe Adresse sein)
+
+# Nur ändern, wenn du nicht Gmail nutzt:
+smtp_host = "smtp.gmail.com"
+smtp_port = 465
