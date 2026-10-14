@@ -1,0 +1,5 @@
+# Lokale Datenbank und Caches nicht ins Git
+data/*.db
+__pycache__/
+.pytest_cache/
+.venv/
