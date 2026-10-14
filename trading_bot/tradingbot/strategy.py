@@ -49,6 +49,11 @@ def select(scores: pd.Series, top_n: int, only_positive: bool) -> list[str]:
     return list(valid.nlargest(top_n).index)
 
 
+def is_rebalance_day(i: int, params: StrategyParams) -> bool:
+    """Ist Tag Nummer i (0 = erster Tag der Daten) ein Entscheidungstag?"""
+    return i >= params.lookback and (i - params.lookback) % params.rebalance_days == 0
+
+
 def target_weights(prices: pd.DataFrame, params: StrategyParams) -> pd.DataFrame:
     """Ziel-Gewichte, die am Ende von Tag t feststehen (Zeilen = Tage).
 
@@ -61,7 +66,7 @@ def target_weights(prices: pd.DataFrame, params: StrategyParams) -> pd.DataFrame
     current = pd.Series(0.0, index=prices.columns)
 
     for i in range(params.lookback, len(prices)):
-        if (i - params.lookback) % params.rebalance_days == 0:
+        if is_rebalance_day(i, params):
             current = pd.Series(0.0, index=prices.columns)
             current[select(mom.iloc[i], params.top_n, params.only_positive)] = 1 / params.top_n
         weights.iloc[i] = current

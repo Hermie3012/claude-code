@@ -49,14 +49,15 @@ pytest
 
 ```
 trading_bot/
-├── app.py              # Startseite der Streamlit-App
-├── pages/              # weitere Seiten (Daten, Backtest, Depot, Signale)
+├── app.py              # Einstieg: legt die Seiten und ihre Namen fest
+├── pages/              # die Seiten (Start, Daten, Backtest, später Depot, Signale)
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
 │   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
 │   ├── db.py           # SQLite-Datenbank (Tabellen anlegen, Verbindung)
 │   ├── watchlist.py    # Watchlist lesen/ändern
 │   ├── data.py         # Kurse laden, cachen, in EUR umrechnen
-│   └── strategy.py     # Momentum-Signale
+│   ├── strategy.py     # Momentum-Signale
+│   └── backtest.py     # Backtest-Simulation und Kennzahlen
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
 ├── requirements.txt    # benötigte Python-Pakete
@@ -94,12 +95,24 @@ einschließlich Tag t; gehandelt wird erst am nächsten Handelstag. Ein Test
 (`test_no_look_ahead`) verändert absichtlich alle späteren Kurse und prüft, dass
 sich frühere Entscheidungen dadurch nicht ändern.
 
+## Der Backtest
+
+- **Zeitablauf:** Entscheidung nach Börsenschluss an Tag t → Order zum Schlusskurs
+  an Tag t+1 → Gewinn/Verlust ab Tag t+2. So nutzt die Strategie nie Kurse, die
+  sie bei der Entscheidung noch nicht kennen konnte.
+- **Drift:** Zwischen zwei Umschichtungen verändern sich die Anteile mit den
+  Kursen (wie in echt). Beim Umschichten wird wieder auf je 1/N gebracht.
+- **Gebühren:** prozentual vom Ordervolumen und/oder fix pro Order.
+- **Benchmark:** alle Aktien der Watchlist zu gleichen Teilen kaufen und liegen lassen.
+- **Kennzahlen:** Gesamtrendite, Rendite p. a., Volatilität, Sharpe-Ratio
+  (ohne risikolosen Zins), maximaler Drawdown.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
 2. ✅ Daten-Modul: Kurse laden und in SQLite cachen, Watchlist editierbar
 3. ✅ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
-4. ⬜ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
+4. ✅ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
 5. ⬜ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
 6. ⬜ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
 7. ⬜ Optional: tägliche E-Mail-Benachrichtigung

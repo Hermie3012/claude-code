@@ -47,3 +47,32 @@ def test_add_ticker_and_load_prices(page):
     assert table.loc["NVDA", "Kurs (EUR)"] == pytest.approx(100.0)
     assert any("MSFT" in e.value for e in page.error)   # Fake liefert für MSFT nichts
     assert len(page.get("plotly_chart")) == 1
+
+
+BACKTEST = str(Path(__file__).resolve().parent.parent / "pages" / "2_Backtest.py")
+
+
+def test_backtest_page(tmp_path, monkeypatch):
+    """Backtest-Seite mit ~1 Jahr erfundener Kurse: Kennzahlen und Charts erscheinen."""
+    import numpy as np
+    import pandas as pd
+
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "test.db")
+    idx = pd.bdate_range("2023-01-02", periods=300)
+    rng = np.random.default_rng(0)
+
+    def downloader(symbols, start):
+        cols = {s: 100 * np.cumprod(1 + rng.normal(0.0005, 0.02, len(idx))) for s in symbols}
+        return pd.DataFrame(cols, index=idx)
+
+    monkeypatch.setattr(data, "load_prices", partial(data.load_prices, downloader=downloader,
+                                                     currency_lookup=lambda t: None, sleep=lambda s: None))
+    at = AppTest.from_file(BACKTEST, default_timeout=20).run()
+    assert not at.exception
+    assert [m.label for m in at.metric] == ["Gesamtrendite", "Rendite p. a.", "Sharpe-Ratio", "Max. Drawdown"]
+    assert len(at.get("plotly_chart")) == 2
+
+    at.sidebar.slider[0].set_value(250).run()     # langer Lookback, 300 Tage reichen noch
+    assert not at.exception
+    at.sidebar.date_input[0].set_value(pd.Timestamp("2024-01-01").date()).run()  # nur ~50 Tage
+    assert any("Zu wenig Kursdaten" in e.value for e in at.error)
