@@ -167,3 +167,44 @@ def test_signals_page_preview_and_execute(tmp_path, monkeypatch):
     actions = at.dataframe[0].value
     assert "SIE.DE" not in actions.index                                # nicht mehr bewertet …
     assert any("SIE.DE" in i.value for i in at.info)                    # … und als "außerhalb" gemeldet
+
+
+NEWS = str(Path(__file__).resolve().parent.parent / "views" / "5_Nachrichten.py")
+
+
+def test_news_page(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from tests.test_news import FakeFetcher, item
+    from tradingbot import news
+    from tradingbot.portfolio import place_order
+    from tradingbot.watchlist import get_watchlist, remove_ticker
+
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "test.db")
+    for t in get_watchlist():
+        if t not in ("NVDA", "SAP.DE"):
+            remove_ticker(t)
+    place_order("SAP.DE", "BUY", 1, 100.0, "2024-01-01")
+    fetcher = FakeFetcher({
+        "NVDA": [item("n1", "Nvidia $5 Mrd. Deal", 3, ["NVDA", "SAP.DE"])],
+        "SAP.DE": [item("s1", "SAP Quartalszahlen", 2)],
+        "^GDAXI": [item("m1", "DAX schließt fester", 1)],
+    }, fail={"^GSPC"})
+    monkeypatch.setattr(news, "refresh_news", partial(news.refresh_news, fetcher=fetcher, sleep=lambda s: None))
+    idx = pd.bdate_range(end=pd.Timestamp.today().normalize() - pd.Timedelta(days=1), periods=5)
+
+    def downloader(symbols, start):
+        return pd.DataFrame({s: [100, 100, 100, 100, 104.0] for s in symbols}, index=idx)
+
+    monkeypatch.setattr(data, "load_prices", partial(data.load_prices, downloader=downloader,
+                                                     currency_lookup=lambda t: None, sleep=lambda s: None))
+    at = AppTest.from_file(NEWS, default_timeout=10).run()
+    assert not at.exception
+    headings = [m.value for m in at.markdown if m.value.startswith("#### ")]
+    # Nvidia-News betrifft NVDA (Watchlist 2) + SAP.DE (Depot 3) = 5 Punkte -> vor SAP-News (3 Punkte)
+    assert "Nvidia \\$5 Mrd. Deal" in headings[0]              # $ entschärft
+    assert "SAP Quartalszahlen" in headings[1]
+    affected = [m.value for m in at.markdown if m.value.startswith("Betrifft:")]
+    assert any("**SAP.DE** (Depot) :green[▲ +4,0%]" in a for a in affected)
+    assert any("**DAX** (Gesamtmarkt)" in a for a in affected)
+    assert any("^GSPC" in e.label for e in at.expander)          # Fehler sichtbar, kein Absturz

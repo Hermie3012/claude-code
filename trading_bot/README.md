@@ -62,6 +62,7 @@ trading_bot/
 │   ├── portfolio.py    # Paper-Depot (virtuelle Orders)
 │   ├── signals.py      # Signale und Depot-Anpassung
 │   ├── notify.py       # E-Mail-Text bauen und senden
+│   ├── news.py         # Börsennachrichten laden und gewichten
 │   └── watchlist.py    # Watchlist und Scan-Liste
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
@@ -137,6 +138,22 @@ sich frühere Entscheidungen dadurch nicht ändern.
   (abschaltbar). Aktien außerhalb von Watchlist/Scan-Liste bleiben unverändert.
 - Die Seite zeigt, wann zuletzt angepasst wurde und ob laut Strategie
   (alle N Handelstage) wieder eine Anpassung fällig ist.
+
+## Nachrichten
+
+Die Seite **Nachrichten** sammelt die neuesten Meldungen von Yahoo Finance
+(meist auf Englisch) zu deinen Depot-Aktien, der Watchlist, optional der
+Scan-Liste und zum Gesamtmarkt (DAX, S&P 500).
+
+- Taucht dieselbe Nachricht bei mehreren Aktien auf, erscheint sie **einmal**
+  mit allen betroffenen Aktien.
+- **Wichtigste zuerst:** jede betroffene Aktie bringt Punkte (Depot 3,
+  Watchlist 2, Gesamtmarkt 2, Scan-Liste 1); nach 24 Stunden zählt eine
+  Nachricht nur noch halb so viel.
+- Neben jeder Aktie steht ihre **Kursänderung am letzten Handelstag** – ein
+  Hinweis, aber kein Beweis, dass die Nachricht der Grund war.
+- Nachrichten werden 2 Stunden zwischengespeichert („Neu laden“ holt sofort
+  neue); Nachrichten älter als 30 Tage werden gelöscht.
 
 ## Tägliche E-Mail
 
@@ -223,3 +240,4 @@ das Programm `cron` (unter `/usr/sbin/cron`) hinzufügen.
 5. ✅ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
 6. ✅ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
 7. ✅ Optional: tägliche E-Mail-Benachrichtigung
+8. ✅ Nachrichten-Seite mit betroffenen Aktien

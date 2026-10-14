@@ -19,5 +19,6 @@ und simuliert ein **Paper-Depot** mit {capital} € Spielgeld.
 2. **Backtest** – Strategie auf historischen Daten testen, Kennzahlen und Gebühren
 3. **Depot** – virtuelle Orders, Positionen, Gewinn/Verlust
 4. **Signale** – aktuelle Kaufen/Verkaufen-Liste mit Begründung, Depot anpassen
+5. **Nachrichten** – wichtigste Börsennachrichten und die betroffenen Aktien
 """
 )

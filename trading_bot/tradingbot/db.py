@@ -7,6 +7,7 @@ Tabellen:
 - fetch_log:   wann und ab welchem Datum ein Ticker zuletzt geladen wurde
 - ticker_info: Währung je Ticker
 - orders:      alle virtuellen Orders des Paper-Depots
+- news, news_links, news_fetch: zwischengespeicherte Nachrichten
 - meta:        sonstige Einstellungen (z. B. "Watchlist wurde schon befüllt")
 """
 
@@ -50,6 +51,24 @@ CREATE TABLE IF NOT EXISTS orders (
     price_date TEXT NOT NULL,      -- Datum des verwendeten Schlusskurses
     fee        REAL NOT NULL,
     note       TEXT
+);
+CREATE TABLE IF NOT EXISTS news (
+    id           TEXT PRIMARY KEY,
+    title        TEXT NOT NULL,
+    summary      TEXT,
+    publisher    TEXT,
+    url          TEXT,
+    published_at TEXT NOT NULL,    -- ISO-Zeit in UTC
+    related      TEXT              -- JSON-Liste weiterer Ticker laut Yahoo
+);
+CREATE TABLE IF NOT EXISTS news_links (  -- in welchem Ticker-Feed die Nachricht auftauchte
+    news_id TEXT NOT NULL,
+    ticker  TEXT NOT NULL,
+    PRIMARY KEY (news_id, ticker)
+);
+CREATE TABLE IF NOT EXISTS news_fetch (
+    ticker     TEXT PRIMARY KEY,
+    fetched_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,

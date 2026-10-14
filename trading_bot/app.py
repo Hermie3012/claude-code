@@ -15,5 +15,6 @@ navigation = st.navigation([
     st.Page("views/2_Backtest.py", title="Backtest", icon="🧪"),
     st.Page("views/3_Depot.py", title="Depot", icon="💼"),
     st.Page("views/4_Signale.py", title="Signale", icon="🚦"),
+    st.Page("views/5_Nachrichten.py", title="Nachrichten", icon="📰"),
 ])
 navigation.run()
