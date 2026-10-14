@@ -55,7 +55,8 @@ trading_bot/
 │   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
 │   ├── db.py           # SQLite-Datenbank (Tabellen anlegen, Verbindung)
 │   ├── watchlist.py    # Watchlist lesen/ändern
-│   └── data.py         # Kurse laden, cachen, in EUR umrechnen
+│   ├── data.py         # Kurse laden, cachen, in EUR umrechnen
+│   └── strategy.py     # Momentum-Signale
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
 ├── requirements.txt    # benötigte Python-Pakete
@@ -79,11 +80,25 @@ dafür, dass sich die Logik ohne Browser testen lässt.
   Pause wiederholt. Klappt es dann nicht, zeigt die App eine Meldung und nutzt –
   falls vorhanden – die zuletzt gespeicherten Kurse.
 
+## Die Strategie (Momentum)
+
+1. Für jede Aktie wird die Rendite der letzten **Lookback** Handelstage berechnet
+   (Standard: 60). Das ist das „Momentum“.
+2. Alle **Rebalancing-Tage** (Standard: 10) werden die **Top-N** Aktien
+   (Standard: 3) gekauft und gleich gewichtet (je 1/N des Depots).
+3. Option **„nur positives Momentum“** (Standard: aus): Aktien mit Momentum ≤ 0
+   werden nicht gekauft, ihr Anteil bleibt als Cash liegen.
+
+**Kein Blick in die Zukunft:** Die Entscheidung an Tag t nutzt nur Kurse bis
+einschließlich Tag t; gehandelt wird erst am nächsten Handelstag. Ein Test
+(`test_no_look_ahead`) verändert absichtlich alle späteren Kurse und prüft, dass
+sich frühere Entscheidungen dadurch nicht ändern.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
 2. ✅ Daten-Modul: Kurse laden und in SQLite cachen, Watchlist editierbar
-3. ⬜ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
+3. ✅ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
 4. ⬜ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
 5. ⬜ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
 6. ⬜ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
