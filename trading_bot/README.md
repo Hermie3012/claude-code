@@ -52,7 +52,10 @@ trading_bot/
 ├── app.py              # Startseite der Streamlit-App
 ├── pages/              # weitere Seiten (Daten, Backtest, Depot, Signale)
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
-│   └── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
+│   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
+│   ├── db.py           # SQLite-Datenbank (Tabellen anlegen, Verbindung)
+│   ├── watchlist.py    # Watchlist lesen/ändern
+│   └── data.py         # Kurse laden, cachen, in EUR umrechnen
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
 ├── requirements.txt    # benötigte Python-Pakete
@@ -62,10 +65,24 @@ trading_bot/
 Die Trennung zwischen `pages/` (Oberfläche) und `tradingbot/` (Logik) sorgt
 dafür, dass sich die Logik ohne Browser testen lässt.
 
+## Kursdaten – wie funktioniert der Cache?
+
+- Kurse werden in `data/trading_bot.db` gespeichert und **12 Stunden** lang
+  wiederverwendet. Danach (oder mit „Alles neu laden“) wird neu geladen.
+- Es werden **bereinigte Kurse** verwendet (Dividenden/Splits herausgerechnet).
+  Deshalb wird beim Aktualisieren die ganze Historie neu geladen, nicht nur der
+  letzte Tag – sonst entstünden künstliche Kurssprünge.
+- **Währungen:** Alle Kurse werden in Euro umgerechnet, mit dem Wechselkurs
+  des jeweiligen Tages (z. B. `EURUSD=X`). Die Währung wird an der Börsen-Endung
+  erkannt: ohne Endung = USD, `.DE` = EUR, `.L` = Pence usw.
+- **Fehler / Rate-Limits:** Schlägt ein Abruf fehl, wird er zweimal mit
+  Pause wiederholt. Klappt es dann nicht, zeigt die App eine Meldung und nutzt –
+  falls vorhanden – die zuletzt gespeicherten Kurse.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
-2. ⬜ Daten-Modul: Kurse laden und in SQLite cachen, Watchlist editierbar
+2. ✅ Daten-Modul: Kurse laden und in SQLite cachen, Watchlist editierbar
 3. ⬜ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
 4. ⬜ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
 5. ⬜ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
