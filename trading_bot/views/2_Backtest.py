@@ -133,11 +133,11 @@ with st.expander(f"📋 Umschichtungen ({len(res.rebalances)})"):
         st.dataframe(res.rebalances, hide_index=True, column_config={
             "Entschieden am": st.column_config.DateColumn(format="DD.MM.YYYY"),
             "Ausgeführt am": st.column_config.DateColumn(format="DD.MM.YYYY"),
-            "Gebühren (EUR)": st.column_config.NumberColumn(format="%.2f €"),
+            "Gebühren (EUR)": st.column_config.NumberColumn(format="euro"),
         })
 with st.expander(f"🧾 Alle Orders ({len(res.trades)})"):
     if not res.trades.empty:
         st.dataframe(res.trades, hide_index=True, column_config={
             "Datum": st.column_config.DateColumn(format="DD.MM.YYYY"),
-            "Betrag (EUR)": st.column_config.NumberColumn(format="%.2f €"),
+            "Betrag (EUR)": st.column_config.NumberColumn(format="euro"),
         })

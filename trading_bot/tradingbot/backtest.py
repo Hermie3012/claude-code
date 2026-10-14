@@ -36,6 +36,10 @@ class Costs:
         """Gebühr für eine Liste von Orderbeträgen (Kauf und Verkauf positiv)."""
         return float(amounts.sum() * self.fee_rate + len(amounts) * self.fixed_fee)
 
+    def for_order(self, volume: float) -> float:
+        """Gebühr für eine einzelne Order."""
+        return self.for_orders(np.array([volume]))
+
 
 @dataclass
 class BacktestResult:

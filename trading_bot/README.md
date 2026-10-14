@@ -50,21 +50,22 @@ pytest
 ```
 trading_bot/
 ├── app.py              # Einstieg: legt die Seiten und ihre Namen fest
-├── pages/              # die Seiten (Start, Daten, Backtest, später Depot, Signale)
+├── views/              # die Seiten (Start, Daten, Backtest, später Depot, Signale)
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
 │   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
 │   ├── db.py           # SQLite-Datenbank (Tabellen anlegen, Verbindung)
 │   ├── watchlist.py    # Watchlist lesen/ändern
 │   ├── data.py         # Kurse laden, cachen, in EUR umrechnen
 │   ├── strategy.py     # Momentum-Signale
-│   └── backtest.py     # Backtest-Simulation und Kennzahlen
+│   ├── backtest.py     # Backtest-Simulation und Kennzahlen
+│   └── portfolio.py    # Paper-Depot (virtuelle Orders)
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
 ├── requirements.txt    # benötigte Python-Pakete
 └── pytest.ini          # Test-Einstellungen
 ```
 
-Die Trennung zwischen `pages/` (Oberfläche) und `tradingbot/` (Logik) sorgt
+Die Trennung zwischen `views/` (Oberfläche) und `tradingbot/` (Logik) sorgt
 dafür, dass sich die Logik ohne Browser testen lässt.
 
 ## Kursdaten – wie funktioniert der Cache?
@@ -107,12 +108,23 @@ sich frühere Entscheidungen dadurch nicht ändern.
 - **Kennzahlen:** Gesamtrendite, Rendite p. a., Volatilität, Sharpe-Ratio
   (ohne risikolosen Zins), maximaler Drawdown.
 
+## Das Paper-Depot
+
+- Startkapital **50.000 € Spielgeld** (beim Zurücksetzen änderbar).
+- Orders werden zum **letzten verfügbaren Schlusskurs** (in €) ausgeführt,
+  nur **ganze Aktien**. Gebühren wie im Backtest einstellbar.
+- Gespeichert werden nur die Orders. Cash, Positionen und Gewinn/Verlust
+  werden daraus jedes Mal neu berechnet – so passen Kontostand und Historie
+  immer zusammen.
+- **Einstandskurs** = Durchschnittspreis inklusive Kaufgebühren.
+  **Realisiert** = Gewinn/Verlust aus Verkäufen, **unrealisiert** = nur auf dem Papier.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
 2. ✅ Daten-Modul: Kurse laden und in SQLite cachen, Watchlist editierbar
 3. ✅ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
 4. ✅ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
-5. ⬜ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
+5. ✅ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
 6. ⬜ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
 7. ⬜ Optional: tägliche E-Mail-Benachrichtigung

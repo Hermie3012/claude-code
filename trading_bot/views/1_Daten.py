@@ -116,7 +116,7 @@ else:
             table,
             column_config={
                 "Kurs (Original)": st.column_config.NumberColumn(format="%.2f"),
-                "Kurs (EUR)": st.column_config.NumberColumn(format="%.2f €"),
+                "Kurs (EUR)": st.column_config.NumberColumn(format="euro"),
                 "Änderung 1 Tag": st.column_config.NumberColumn(format="percent"),
             },
         )

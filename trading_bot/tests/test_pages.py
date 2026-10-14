@@ -9,7 +9,7 @@ from streamlit.testing.v1 import AppTest
 from tests.fakes import FakeDownloader
 from tradingbot import config, data
 
-PAGE = str(Path(__file__).resolve().parent.parent / "pages" / "1_Daten.py")
+PAGE = str(Path(__file__).resolve().parent.parent / "views" / "1_Daten.py")
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_add_ticker_and_load_prices(page):
     assert len(page.get("plotly_chart")) == 1
 
 
-BACKTEST = str(Path(__file__).resolve().parent.parent / "pages" / "2_Backtest.py")
+BACKTEST = str(Path(__file__).resolve().parent.parent / "views" / "2_Backtest.py")
 
 
 def test_backtest_page(tmp_path, monkeypatch):
@@ -76,3 +76,49 @@ def test_backtest_page(tmp_path, monkeypatch):
     assert not at.exception
     at.sidebar.date_input[0].set_value(pd.Timestamp("2024-01-01").date()).run()  # nur ~50 Tage
     assert any("Zu wenig Kursdaten" in e.value for e in at.error)
+
+
+DEPOT = str(Path(__file__).resolve().parent.parent / "views" / "3_Depot.py")
+
+
+@pytest.fixture
+def depot_page(tmp_path, monkeypatch):
+    import pandas as pd
+
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "test.db")
+    idx = pd.bdate_range(end=pd.Timestamp.today().normalize() - pd.Timedelta(days=1), periods=20)
+
+    def downloader(symbols, start):
+        prices = {"NVDA": 110.0, "EURUSD=X": 1.10, "SAP.DE": 200.0}
+        return pd.DataFrame({s: [prices.get(s, 50.0)] * len(idx) for s in symbols}, index=idx)
+
+    monkeypatch.setattr(data, "load_prices", partial(data.load_prices, downloader=downloader,
+                                                     currency_lookup=lambda t: None, sleep=lambda s: None))
+    from tradingbot.watchlist import get_watchlist, remove_ticker
+    for t in get_watchlist():
+        if t not in ("NVDA", "SAP.DE"):
+            remove_ticker(t)
+    return AppTest.from_file(DEPOT, default_timeout=10).run()
+
+
+def test_depot_buy_sell_and_reset(depot_page):
+    at = depot_page
+    assert not at.exception
+    assert at.metric[0].value == "50.000,00 €"
+
+    at.selectbox[0].set_value("NVDA")
+    at.number_input[0].set_value(10)
+    at.run()
+    button(at, "Kaufen (Spielgeld)").click().run()
+    assert any("10 × NVDA" in s.value for s in at.success)
+    assert at.metric[1].value == "48.999,00 €"     # 50.000 - 10 × 100 € (= 110 USD) - 1 € Gebühr (0,1 %)
+    assert at.dataframe[0].value.loc["NVDA", "Stück"] == 10
+
+    at.radio[0].set_value("Verkaufen").run()
+    at.number_input[0].set_value(11).run()
+    button(at, "Verkaufen (Spielgeld)").click().run()
+    assert any("nur 10 Stück" in e.value for e in at.error)
+
+    at.checkbox[0].check().run()
+    button(at, "Depot zurücksetzen").click().run()
+    assert at.metric[1].value == "50.000,00 €"
