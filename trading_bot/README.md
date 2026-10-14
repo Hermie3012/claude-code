@@ -8,12 +8,34 @@ Die App scannt eine Watchlist von Aktien, berechnet Momentum-Signale
 (Basis: `../backtest_momentum.py`), testet die Strategie auf historischen
 Daten und simuliert ein Depot mit 50.000 € Startkapital.
 
+## 🚀 Schnellstart (ohne Vorkenntnisse)
+
+1. **Python installieren** (einmalig): <https://www.python.org/downloads/>
+   herunterladen und installieren. **Windows:** im Installer unbedingt
+   „Add python.exe to PATH“ ankreuzen.
+2. **Code herunterladen:** auf GitHub den grünen Knopf **„Code“ → „Download ZIP“**
+   wählen und die ZIP-Datei entpacken. (Solange die App noch nicht in `main`
+   übernommen ist: <https://github.com/Hermie3012/claude-code/archive/refs/heads/trading-bot-app.zip>)
+3. Im entpackten Ordner in den Unterordner **`trading_bot`** wechseln und
+   **doppelklicken**:
+   - **Windows:** `start.bat`
+   - **Mac:** `start.command` – beim allerersten Mal ggf. **Rechtsklick → Öffnen**,
+     weil macOS Dateien aus dem Internet zunächst blockiert.
+   - **Linux:** im Terminal `bash start.command`
+4. Beim ersten Start werden die Pakete installiert (ein paar Minuten, Internet nötig).
+   Danach öffnet sich die App im Browser. Ab dem zweiten Start geht es schnell.
+5. **Beenden:** das schwarze Fenster (Terminal) schließen.
+
+Deine Daten (Watchlist, Depot, Kurse) liegen in `trading_bot/data/` auf deinem
+Computer. Wenn du eine neue Version herunterlädst, kopiere diesen Ordner mit,
+damit dein Depot erhalten bleibt.
+
 ## Voraussetzungen
 
 - Python **3.11 oder neuer** (`python --version` prüfen)
 - Internetzugang (Kursdaten kommen von Yahoo Finance über `yfinance`)
 
-## Installation
+## Installation (manuell, für Fortgeschrittene)
 
 Im Terminal in diesen Ordner wechseln (`trading_bot/`) und dann:
 
@@ -51,6 +73,9 @@ pytest
 trading_bot/
 ├── app.py              # Einstieg: legt die Seiten und ihre Namen fest
 ├── notify.py           # tägliche Signal-E-Mail (separat starten)
+├── start.bat           # Start per Doppelklick (Windows)
+├── start.command       # Start per Doppelklick (Mac) bzw. bash start.command (Linux)
+├── .streamlit/         # Streamlit-Einstellungen (z. B. keine E-Mail-Abfrage beim Start)
 ├── email_config.example.toml  # Vorlage für die E-Mail-Zugangsdaten
 ├── views/              # die Seiten (Start, Daten, Backtest, später Depot, Signale)
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
