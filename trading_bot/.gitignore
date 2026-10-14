@@ -1,0 +1,11 @@
+# Lokale Datenbank und Caches nicht ins Git
+data/*.db
+__pycache__/
+.pytest_cache/
+.venv/
+# Zugangsdaten für die E-Mail – niemals ins Git!
+email_config.toml
+data/*.log
+
+# Geheime Streamlit-Einstellungen (Tokens, Passwörter) – niemals ins Git
+.streamlit/secrets.toml

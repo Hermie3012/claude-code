@@ -1,2 +1,5 @@
 * text=auto eol=lf
 *.sh text eol=lf
+# Trading-Bot: Windows-Startdatei braucht CRLF-Zeilenenden
+trading_bot/start.bat     text eol=crlf
+trading_bot/start.command text eol=lf

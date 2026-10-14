@@ -1,2 +1,5 @@
 .DS_Store
 
+
+# Trading-Bot: geheime Streamlit-Einstellungen
+.streamlit/secrets.toml

@@ -1,0 +1,7 @@
+# Streamlit-Einstellungen für diese App (gelten, wenn sie aus diesem Ordner gestartet wird)
+
+[server]
+showEmailPrompt = false     # keine E-Mail-Abfrage beim allerersten Start
+
+[browser]
+gatherUsageStats = false    # keine Nutzungsstatistik an Streamlit senden
