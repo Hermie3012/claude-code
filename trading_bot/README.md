@@ -30,6 +30,87 @@ Deine Daten (Watchlist, Depot, Kurse) liegen in `trading_bot/data/` auf deinem
 Computer. Wenn du eine neue Version herunterlädst, kopiere diesen Ordner mit,
 damit dein Depot erhalten bleibt.
 
+## 📱 Online nutzen (z. B. auf dem iPad)
+
+Die App kann kostenlos bei **Streamlit Community Cloud** laufen. Dann öffnest du
+sie einfach in Safari – kein Computer nötig. Alle Schritte gehen im iPad-Browser.
+
+**So funktioniert es:** Streamlit holt den Code aus deinem GitHub-Repository.
+Deine Daten (Watchlist, Depot, Orders, Einstellungen) werden zusätzlich in
+einem „secret“ **GitHub Gist** gespeichert – sonst wären sie nach jedem
+Neustart des Servers weg. Ein Passwort schützt die App.
+
+### Schritt 1: Code nach `main` übernehmen
+
+Auf GitHub den Pull Request „Trading-Bot-App …“ öffnen → **Merge pull request**
+→ **Confirm merge**. (Die tägliche E-Mail funktioniert nur von `main` aus.)
+
+### Schritt 2: GitHub-Token für den Daten-Speicher erstellen
+
+1. <https://github.com/settings/personal-access-tokens/new> öffnen
+   (oder: Profilbild → Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token).
+2. **Token name:** `trading-bot` · **Expiration:** z. B. 1 Jahr.
+3. **Repository access:** „Public repositories“ genügt.
+4. **Permissions → Account permissions → Gists:** „Read and write“.
+5. **Generate token** → den Token (beginnt mit `github_pat_`) kopieren und
+   sicher aufbewahren (z. B. in der Notizen-App). Er wird nur einmal angezeigt.
+
+### Schritt 3: App bei Streamlit veröffentlichen
+
+1. <https://share.streamlit.io> öffnen → **Continue with GitHub** → Zugriff erlauben.
+2. **Create app** → „Deploy a public app from GitHub“ wählen.
+3. Eintragen:
+   - **Repository:** `Hermie3012/claude-code`
+   - **Branch:** `main`
+   - **Main file path:** `trading_bot/app.py`
+   - **App URL:** ein Name nach Wahl, z. B. `mein-trading-bot`
+4. **Advanced settings** öffnen:
+   - **Python version:** 3.12
+   - **Secrets:** folgendes eintragen (eigene Werte einsetzen):
+     ```toml
+     APP_PASSWORD = "ein-passwort-das-du-dir-ausdenkst"
+     GIST_TOKEN = "github_pat_..."
+     ```
+5. **Save** → **Deploy**. Die erste Einrichtung dauert ein paar Minuten.
+
+### Schritt 4: Auf dem iPad benutzen
+
+Die App-Adresse (z. B. `https://mein-trading-bot.streamlit.app`) in Safari
+öffnen und das Passwort eingeben. Tipp: Teilen-Knopf → **„Zum Home-Bildschirm“**
+– dann hast du ein App-Symbol.
+
+### Schritt 5 (optional): Tägliche E-Mail ohne Computer
+
+Läuft über **GitHub Actions** (`.github/workflows/trading-bot-notify.yml`),
+Montag–Freitag um 22:45 Uhr (Sommerzeit) bzw. 21:45 Uhr (Winterzeit).
+
+1. Gmail-App-Passwort erstellen (siehe „Tägliche E-Mail“ → Schritt 1 weiter unten).
+2. Auf GitHub im Repository: **Settings → Secrets and variables → Actions →
+   New repository secret**, vier Secrets anlegen:
+   `GIST_TOKEN` (wie oben), `SMTP_SENDER` (deine Gmail-Adresse),
+   `SMTP_APP_PASSWORD` (Gmail-App-Passwort), `SMTP_RECIPIENT` (Empfänger).
+3. Tab **Actions** öffnen. Falls GitHub fragt: Workflows aktivieren
+   („I understand my workflows, go ahead and enable them“).
+4. Testen: **Trading-Bot Signal-E-Mail → Run workflow**. Nach 1–2 Minuten sollte
+   die E-Mail ankommen; bei einem roten ❌ zeigt das Protokoll den Grund.
+
+### Gut zu wissen
+
+- **Einschlafen:** Nach ca. 12 Stunden ohne Besuch schläft die App ein. Beim
+  nächsten Öffnen auf **„Yes, get this app back up!“** tippen – das dauert
+  1–2 Minuten. Deine Daten bleiben erhalten (Gist).
+- **Rate-Limits:** Yahoo bremst Anfragen von Cloud-Servern manchmal aus. Dann
+  zeigt die App eine Meldung – einfach später erneut versuchen.
+- **Datenschutz:** Ein „secret“ Gist ist nirgends öffentlich gelistet, aber wer
+  den genauen Link kennt, kann ihn lesen. Für ein Spielgeld-Depot unkritisch.
+  Den Token niemals weitergeben; falls doch passiert: auf GitHub löschen und neu erstellen.
+- **Speichern:** Jede Änderung wird automatisch gesichert. Ist der Speicher
+  nicht erreichbar, zeigt die App eine rote Meldung – dann lieber nichts ändern
+  und später neu laden.
+- Lokal auf einem Computer (ohne diese Secrets) läuft die App wie gehabt, ohne
+  Passwort und ohne Gist.
+
 ## Voraussetzungen
 
 - Python **3.11 oder neuer** (`python --version` prüfen)
@@ -88,6 +169,8 @@ trading_bot/
 │   ├── signals.py      # Signale und Depot-Anpassung
 │   ├── notify.py       # E-Mail-Text bauen und senden
 │   ├── news.py         # Börsennachrichten laden und gewichten
+│   ├── cloud.py        # Online-Betrieb: Secrets, Passwort, Abgleich
+│   ├── storage.py      # Daten im GitHub Gist sichern/laden
 │   └── watchlist.py    # Watchlist und Scan-Liste
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
@@ -266,3 +349,4 @@ das Programm `cron` (unter `/usr/sbin/cron`) hinzufügen.
 6. ✅ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
 7. ✅ Optional: tägliche E-Mail-Benachrichtigung
 8. ✅ Nachrichten-Seite mit betroffenen Aktien
+9. ✅ Start per Doppelklick (Computer) und Online-Betrieb (iPad)

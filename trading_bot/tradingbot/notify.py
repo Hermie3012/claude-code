@@ -6,6 +6,7 @@ dein normales Passwort. Anleitung im README.
 Es werden KEINE Orders ausgeführt – die E-Mail ist nur eine Erinnerung.
 """
 
+import os
 import smtplib
 import ssl
 import tomllib
@@ -37,7 +38,14 @@ class EmailConfig:
     smtp_port: int = 465
 
 
+ENV_KEYS = {"sender": "SMTP_SENDER", "app_password": "SMTP_APP_PASSWORD", "recipient": "SMTP_RECIPIENT"}
+
+
 def load_email_config(path: Path = CONFIG_PATH) -> EmailConfig:
+    """Zugangsdaten aus email_config.toml – oder aus Umgebungsvariablen (GitHub Actions)."""
+    if not path.exists() and all(os.environ.get(v) for v in ENV_KEYS.values()):
+        return EmailConfig(**{k: os.environ[v].replace(" ", "") if k == "app_password" else os.environ[v]
+                              for k, v in ENV_KEYS.items()})
     if not path.exists():
         raise NotifyError(
             f"Datei {path.name} fehlt. Kopiere email_config.example.toml nach {path.name} "

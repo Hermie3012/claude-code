@@ -4,6 +4,9 @@
     python notify.py --dry-run   # nur anzeigen, nichts senden (zum Testen)
 
 Für den täglichen automatischen Start siehe README ("Tägliche E-Mail").
+Online-Betrieb: läuft über GitHub Actions (.github/workflows/trading-bot-notify.yml),
+Zugangsdaten dann aus Umgebungsvariablen (SMTP_SENDER, SMTP_APP_PASSWORD,
+SMTP_RECIPIENT, GIST_TOKEN).
 Jeder Lauf wird in data/notify.log protokolliert.
 """
 
@@ -16,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tradingbot import config  # noqa: E402
+from tradingbot.cloud import get_sync  # noqa: E402
 from tradingbot.notify import NotifyError, build_report, load_email_config, send_email  # noqa: E402
 
 
@@ -32,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
     log.addHandler(handler)
     try:
         email_cfg = None if args.dry_run else load_email_config()
+        sync = get_sync()   # Online-Betrieb: deine Daten zuerst aus dem Gist laden
+        if sync is not None and not sync.ensure_pulled():
+            raise NotifyError(sync.error)
         subject, body = build_report()
         if args.dry_run:
             print(f"Betreff: {subject}\n\n{body}\n\n(--dry-run: nichts gesendet)")
