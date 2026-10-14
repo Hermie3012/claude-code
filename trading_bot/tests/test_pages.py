@@ -35,9 +35,9 @@ def test_page_renders_with_disclaimer(page):
 
 
 def test_add_ticker_and_load_prices(page):
-    page.text_input(key="new_tickers").input("msft, ungültig!")
+    page.text_input(key="watchlist_new").input("msft, ungültig!")
     button(page, "Hinzufügen").click().run()
-    assert any("MSFT hinzugefügt" in s.value for s in page.success)
+    assert any("MSFT zur Watchlist hinzugefügt" in s.value for s in page.success)
     assert any("Ungültiges Ticker-Symbol" in e.value for e in page.error)
 
     button(page, "Kurse laden").click().run()
@@ -122,3 +122,48 @@ def test_depot_buy_sell_and_reset(depot_page):
     at.checkbox[0].check().run()
     button(at, "Depot zurücksetzen").click().run()
     assert at.metric[1].value == "50.000,00 €"
+
+
+SIGNALS = str(Path(__file__).resolve().parent.parent / "views" / "4_Signale.py")
+
+
+def test_signals_page_preview_and_execute(tmp_path, monkeypatch):
+    import numpy as np
+    import pandas as pd
+
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "test.db")
+    idx = pd.bdate_range(end=pd.Timestamp.today().normalize() - pd.Timedelta(days=1), periods=120)
+    trend = {"NVDA": 0.004, "SAP.DE": 0.003, "SIE.DE": 0.002, "EURUSD=X": 0.0}
+
+    def downloader(symbols, start):
+        return pd.DataFrame({s: (1.1 if s == "EURUSD=X" else 100) * (1 + trend.get(s, -0.001)) ** np.arange(len(idx))
+                             for s in symbols}, index=idx)
+
+    monkeypatch.setattr(data, "load_prices", partial(data.load_prices, downloader=downloader,
+                                                     currency_lookup=lambda t: None, sleep=lambda s: None))
+    from tradingbot.watchlist import add_ticker, get_watchlist, remove_ticker
+    for name in ("watchlist", "scanlist"):
+        for t in get_watchlist(name=name):
+            remove_ticker(t, name=name)
+    add_ticker("NVDA")
+    add_ticker("SAP.DE")
+    add_ticker("SIE.DE", name="scanlist")
+    add_ticker("BAS.DE", name="scanlist")
+
+    at = AppTest.from_file(SIGNALS, default_timeout=20).run()
+    assert not at.exception
+    actions = at.dataframe[0].value
+    assert list(actions.index) == ["NVDA", "SAP.DE", "SIE.DE"]          # Top 3, alle KAUFEN
+    assert set(actions["Signal"]) == {"🟢 KAUFEN"}
+
+    button(at, "Vorschau").click().run()
+    plan = at.dataframe[2].value
+    assert list(plan["Ticker"]) == ["NVDA", "SAP.DE", "SIE.DE"]
+    button(at, "Orders ausführen").click().run()
+    assert any("3 Orders ausgeführt" in s.value for s in at.success)
+    assert set(at.dataframe[0].value["Signal"]) == {"🔵 HALTEN"}       # jetzt im Depot
+
+    at.sidebar.checkbox[1].uncheck().run()                              # ohne Scan-Liste
+    actions = at.dataframe[0].value
+    assert "SIE.DE" not in actions.index                                # nicht mehr bewertet …
+    assert any("SIE.DE" in i.value for i in at.info)                    # … und als "außerhalb" gemeldet

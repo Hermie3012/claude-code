@@ -38,3 +38,19 @@ def test_invalid_tickers_are_rejected(raw):
 @pytest.mark.parametrize("raw,expected", [("sap.de", "SAP.DE"), ("brk-b", "BRK-B"), ("^gdaxi", "^GDAXI")])
 def test_valid_tickers(raw, expected):
     assert normalize_ticker(raw) == expected
+
+
+def test_scanlist_is_separate(db):
+    assert get_watchlist(db, name="scanlist") == config.DEFAULT_SCANLIST
+    add_ticker("TSLA", db, name="scanlist")
+    assert "TSLA" in get_watchlist(db, name="scanlist")
+    assert "TSLA" not in get_watchlist(db)
+    remove_ticker("SAP.DE", db, name="scanlist")
+    assert "SAP.DE" in get_watchlist(db)          # Watchlist unberührt
+    reset_watchlist(db, name="scanlist")
+    assert get_watchlist(db, name="scanlist") == config.DEFAULT_SCANLIST
+
+
+def test_unknown_list_name_rejected(db):
+    with pytest.raises(ValueError):
+        get_watchlist(db, name="prices; DROP TABLE prices")

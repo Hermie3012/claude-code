@@ -54,11 +54,12 @@ trading_bot/
 ├── tradingbot/         # die eigentliche Logik (ohne Oberfläche)
 │   ├── config.py       # Standardwerte (Watchlist, Lookback, Gebühren …)
 │   ├── db.py           # SQLite-Datenbank (Tabellen anlegen, Verbindung)
-│   ├── watchlist.py    # Watchlist lesen/ändern
 │   ├── data.py         # Kurse laden, cachen, in EUR umrechnen
 │   ├── strategy.py     # Momentum-Signale
 │   ├── backtest.py     # Backtest-Simulation und Kennzahlen
-│   └── portfolio.py    # Paper-Depot (virtuelle Orders)
+│   ├── portfolio.py    # Paper-Depot (virtuelle Orders)
+│   ├── signals.py      # Signale und Depot-Anpassung
+│   └── watchlist.py    # Watchlist und Scan-Liste
 ├── tests/              # automatische Tests
 ├── data/               # lokale SQLite-Datenbank (wird nicht ins Git übernommen)
 ├── requirements.txt    # benötigte Python-Pakete
@@ -119,6 +120,21 @@ sich frühere Entscheidungen dadurch nicht ändern.
 - **Einstandskurs** = Durchschnittspreis inklusive Kaufgebühren.
   **Realisiert** = Gewinn/Verlust aus Verkäufen, **unrealisiert** = nur auf dem Papier.
 
+## Signale
+
+- **Universum:** Watchlist plus (abschaltbar) die **Scan-Liste**. Die Scan-Liste
+  ist mit deutschen Standardwerten (DAX) vorbelegt – Stand beim Erstellen der
+  App, Indizes ändern sich. Bearbeiten auf der Seite **Daten**.
+- **KAUFEN** = im Ziel-Depot (Top-N), aber nicht in deinem Depot ·
+  **VERKAUFEN** = in deinem Depot, aber nicht mehr im Ziel-Depot ·
+  **HALTEN** = in beiden. Jede Zeile hat eine Begründung (Rang, Momentum).
+- **Depot anpassen:** zeigt erst eine **Vorschau** der Orders, ausgeführt wird
+  erst nach Bestätigung. Ziel: je 1/N des Depotwerts, ganze Aktien. Gehaltene
+  Positionen werden nur angeglichen, wenn sie mehr als 2 % vom Ziel abweichen
+  (abschaltbar). Aktien außerhalb von Watchlist/Scan-Liste bleiben unverändert.
+- Die Seite zeigt, wann zuletzt angepasst wurde und ob laut Strategie
+  (alle N Handelstage) wieder eine Anpassung fällig ist.
+
 ## Fahrplan
 
 1. ✅ Projektstruktur, requirements.txt, README
@@ -126,5 +142,5 @@ sich frühere Entscheidungen dadurch nicht ändern.
 3. ✅ Strategie-Modul: Momentum-Signale (Lookback, Top-N einstellbar)
 4. ✅ Backtest-Seite: Rendite, Sharpe, max. Drawdown, Chart, Gebühren
 5. ✅ Paper-Depot: 50.000 € Spielgeld, Orders, Positionen, G/V, Historie
-6. ⬜ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
+6. ✅ Signal-Seite: Kaufen/Verkaufen-Liste mit Begründung
 7. ⬜ Optional: tägliche E-Mail-Benachrichtigung

@@ -15,9 +15,9 @@ Diese App scannt eine Watchlist von Aktien, berechnet **Momentum-Signale**
 und simuliert ein **Paper-Depot** mit {capital} € Spielgeld.
 
 **Seiten (links in der Seitenleiste):**
-1. **Daten** – Watchlist bearbeiten, Kurse laden
+1. **Daten** – Watchlist und Scan-Liste bearbeiten, Kurse laden
 2. **Backtest** – Strategie auf historischen Daten testen, Kennzahlen und Gebühren
 3. **Depot** – virtuelle Orders, Positionen, Gewinn/Verlust
-4. **Signale** – aktuelle Kaufen/Verkaufen-Liste *(kommt in Schritt 6)*
+4. **Signale** – aktuelle Kaufen/Verkaufen-Liste mit Begründung, Depot anpassen
 """
 )

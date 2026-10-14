@@ -1,4 +1,4 @@
-"""Seite 'Daten': Watchlist bearbeiten, Kurse laden, Cache ansehen."""
+"""Seite 'Daten': Watchlist und Scan-Liste bearbeiten, Kurse laden, Cache ansehen."""
 
 from datetime import date
 
@@ -23,57 +23,72 @@ state.setdefault("flash", [])          # Meldungen, die nach einem Klick angezei
 state.setdefault("color_of", {})       # Ticker -> Farbe (bleibt stabil)
 
 
+LIST_LABEL = {"watchlist": "Watchlist", "scanlist": "Scan-Liste"}
+
+
 # ---------------------------------------------------------------- Aktionen
-def on_add():
-    raw = state.get("new_tickers", "")
+def on_add(name):
+    raw = state.get(f"{name}_new", "")
     for part in raw.replace(";", ",").split(","):
         if not part.strip():
             continue
         try:
             t = normalize_ticker(part)
-            if add_ticker(t):
-                state.flash.append(("success", f"{t} hinzugefügt."))
+            if add_ticker(t, name=name):
+                state.flash.append(("success", f"{t} zur {LIST_LABEL[name]} hinzugefügt."))
             else:
-                state.flash.append(("info", f"{t} ist schon in der Watchlist."))
+                state.flash.append(("info", f"{t} ist schon in der {LIST_LABEL[name]}."))
         except ValueError as exc:
             state.flash.append(("error", str(exc)))
-    state.new_tickers = ""
+    state[f"{name}_new"] = ""
 
 
-def on_remove():
-    for t in state.get("to_remove", []):
-        remove_ticker(t)
-    state.to_remove = []
+def on_remove(name):
+    for t in state.get(f"{name}_remove", []):
+        remove_ticker(t, name=name)
+    state[f"{name}_remove"] = []
 
 
-def on_reset():
-    reset_watchlist()
-    state.flash.append(("success", "Standard-Watchlist wiederhergestellt."))
+def on_reset(name):
+    reset_watchlist(name=name)
+    state.flash.append(("success", f"Standardwerte der {LIST_LABEL[name]} wiederhergestellt."))
+
+
+def list_editor(name: str) -> list[str]:
+    """Zeigt eine Ticker-Liste mit Hinzufügen/Entfernen/Zurücksetzen an."""
+    tickers = get_watchlist(name=name)
+    st.write(f"**{len(tickers)} Ticker:** " + (", ".join(tickers) or "– leer –"))
+    col_add, col_remove = st.columns(2)
+    with col_add:
+        st.text_input(
+            "Ticker hinzufügen (mehrere mit Komma)",
+            key=f"{name}_new",
+            placeholder="z. B. TSLA, BAS.DE",
+            help="Yahoo-Finance-Symbole: US-Aktien ohne Endung, Xetra mit .DE, London mit .L",
+        )
+        st.button("➕ Hinzufügen", key=f"{name}_add_btn", on_click=on_add, args=(name,))
+    with col_remove:
+        st.multiselect("Ticker entfernen", tickers, key=f"{name}_remove")
+        c1, c2 = st.columns(2)
+        c1.button("🗑️ Entfernen", key=f"{name}_remove_btn", on_click=on_remove, args=(name,),
+                  disabled=not state.get(f"{name}_remove"))
+        c2.button("↺ Standardwerte", key=f"{name}_reset_btn", on_click=on_reset, args=(name,))
+    return tickers
 
 
 for level, msg in state.flash:
     getattr(st, level)(msg)
 state.flash = []
 
-# ---------------------------------------------------------------- Watchlist
+# ---------------------------------------------------------------- Listen
 st.header("1. Watchlist")
-watchlist = get_watchlist()
-st.write(f"**{len(watchlist)} Ticker:** " + (", ".join(watchlist) or "– leer –"))
+st.caption("Deine Aktien – Grundlage für Backtest und Signale.")
+watchlist = list_editor("watchlist")
 
-col_add, col_remove = st.columns(2)
-with col_add:
-    st.text_input(
-        "Ticker hinzufügen (mehrere mit Komma)",
-        key="new_tickers",
-        placeholder="z. B. TSLA, BAS.DE",
-        help="Yahoo-Finance-Symbole: US-Aktien ohne Endung, Xetra mit .DE, London mit .L",
-    )
-    st.button("➕ Hinzufügen", on_click=on_add)
-with col_remove:
-    st.multiselect("Ticker entfernen", watchlist, key="to_remove")
-    c1, c2 = st.columns(2)
-    c1.button("🗑️ Entfernen", on_click=on_remove, disabled=not state.get("to_remove"))
-    c2.button("↺ Standardliste", on_click=on_reset)
+with st.expander("🔭 Scan-Liste (zusätzliche Kandidaten für die Signal-Seite)"):
+    st.caption("Vorbelegt mit deutschen Standardwerten (DAX). Stand: Wissen beim Erstellen der App – "
+               "Indexzusammensetzungen ändern sich, bitte gelegentlich prüfen und anpassen.")
+    list_editor("scanlist")
 
 # ---------------------------------------------------------------- Kurse laden
 st.header("2. Kurse laden")

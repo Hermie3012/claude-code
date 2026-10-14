@@ -2,6 +2,7 @@
 
 Tabellen:
 - watchlist:   die beobachteten Ticker
+- scanlist:    zusätzliche Kandidaten für die Signal-Seite
 - prices:      Schlusskurse je Ticker und Tag (in Originalwährung)
 - fetch_log:   wann und ab welchem Datum ein Ticker zuletzt geladen wurde
 - ticker_info: Währung je Ticker
@@ -17,6 +18,10 @@ from tradingbot import config
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS watchlist (
+    ticker   TEXT PRIMARY KEY,
+    added_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS scanlist (
     ticker   TEXT PRIMARY KEY,
     added_at TEXT NOT NULL
 );
